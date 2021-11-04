@@ -58,6 +58,8 @@ namespace cppwin32
     static void write_version_assert(writer& w)
     {
         w.write_root_include("base");
+        w.write("#include \"win32/impl/complex_structs.h\"\n");
+        w.write("#include \"win32/impl/complex_interfaces.h\"\n");
         auto format = R"(static_assert(win32::check_version(CPPWIN32_VERSION, "%"), "Mismatched C++/Win32 headers.");
 #define CPPWIN32_VERSION "%"
 )";
@@ -565,6 +567,25 @@ namespace cppwin32
         w.write("auto % = ", signature.return_param_name());
     }
 
+    void write_orbit_instrumentation(writer& w, method_signature const& signature)
+    {
+        w.write("ORBIT_SCOPE_FUNCTION();\n");
+        for (auto&& [param, param_signature] : signature.params())
+        {
+            w.write("        ORBIT_TRACK_PARAM(%);\n", param.Name());
+        }
+    }
+
+    void write_orbit_instrumentation_ret(writer& w, method_signature const& signature)
+    {
+        if (!signature.return_signature())
+        {
+            return;
+        }
+
+        w.write("ORBIT_TRACK_RET(%);", signature.return_param_name());
+    }
+
     void write_consume_return_statement(writer& w, method_signature const& signature)
     {
         if (!signature.return_signature())
@@ -575,6 +596,22 @@ namespace cppwin32
         w.write("\n        return %;", signature.return_param_name());
     }
 
+    void write_class_api_table(writer& w, TypeDef const& type)
+    {
+        auto const format = R"xyz(    % (__stdcall *%)(%) noexcept;
+)xyz";
+        w.write("\nstruct ApiTable {\n");
+        for (auto&& method : type.MethodList())
+        {
+            if (method.Flags().Access() == MemberAccess::Public)
+            {
+                method_signature signature{ method };
+                w.write(format, bind<write_abi_return>(signature.return_signature()), method.Name(), bind<write_abi_params>(signature));
+            }
+        }
+        w.write("};\nextern ApiTable g_api_table;\n");
+    }
+
     void write_class_abi(writer& w, TypeDef const& type)
     {
         auto abi_guard = w.push_abi_types(true);
@@ -583,7 +620,7 @@ namespace cppwin32
         w.write(R"(extern "C"
 {
 )");
-        auto const format = R"xyz(    % __stdcall WIN32_IMPL_%(%) noexcept;
+        auto const format = R"xyz(    % __stdcall ORBIT_IMPL_%(%) noexcept;
 )xyz";
 
         for (auto&& method : type.MethodList())
@@ -597,14 +634,17 @@ namespace cppwin32
         w.write(R"(}
 )");
 
-        for (auto&& method : type.MethodList())
+        write_class_api_table(w, type);
+        /*for (auto&& method : type.MethodList())
         {
             if (method.Flags().Access() == MemberAccess::Public)
             {
                 method_signature signature{ method };
+                w.write("struct ApiTable {\n");
                 w.write("WIN32_IMPL_LINK(%)\n", bind<write_abi_link>(signature));
+                w.write("}\n");
             }
-        }
+        }*/
         w.write("\n");
     }
     
@@ -645,7 +685,7 @@ namespace cppwin32
     {
         auto const format = R"xyz(    inline % %(%)
     {
-        %WIN32_IMPL_%(%);%
+        %ORBIT_IMPL_%(%);%
     }
 )xyz";
         w.write(format,
@@ -657,6 +697,51 @@ namespace cppwin32
             bind<write_method_args>(method_signature),
             bind<write_consume_return_statement>(method_signature)
         );
+    }
+
+    void write_class_method_with_orbit_instrumentation(writer& w, method_signature const& method_signature)
+    {
+        auto const format = R"xyz(    % __stdcall ORBIT_IMPL_%(%) noexcept
+    {
+        %
+        %g_api_table.%(%);
+        %%
+    }
+)xyz";
+        w.write(format,
+            bind<write_method_return>(method_signature),
+            method_signature.method().Name(),
+            bind<write_method_params>(method_signature),
+            bind<write_orbit_instrumentation>(method_signature),
+            bind<write_consume_return_type>(method_signature),
+            method_signature.method().Name(),
+            bind<write_method_args>(method_signature),
+            bind<write_orbit_instrumentation_ret>(method_signature),
+            bind<write_consume_return_statement>(method_signature)
+        );
+    }
+
+    // Orbit
+    void write_class_impl(writer& w, TypeDef const& type)
+    {
+        auto abi_guard = w.push_abi_types(true);
+        auto ns_guard = w.push_full_namespace(true);
+
+        w.write(R"(extern "C"
+{
+)");
+        auto const format = R"xyz(% __stdcall ORBIT_IMPL_%(%) noexcept {
+)xyz";
+
+        for (auto&& method : type.MethodList())
+        {
+            method_signature signature{ method };
+            write_class_method_with_orbit_instrumentation(w, signature);
+            w.write("\n");
+        }
+        w.write(R"(}
+)");
+        w.write("\n");
     }
 
     void write_class(writer& w, TypeDef const& type)

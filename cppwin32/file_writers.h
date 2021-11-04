@@ -104,6 +104,36 @@ namespace cppwin32
         w.save_header('2');
     }
 
+    static void write_namespace_cpp(std::string_view const& ns, cache::namespace_members const& members)
+    {
+        writer w;
+        w.type_namespace = ns;
+
+        {
+            auto wrap = wrap_type_namespace(w, ns);
+
+            w.write("ApiTable g_api_table;\n\n");
+            w.write("#pragma region abi_methods\n");
+            w.write_each<write_class_impl>(members.classes);
+            w.write("#pragma endregion abi_methods\n\n");
+        }
+
+        write_close_file_guard(w);
+        w.swap();
+        write_preamble(w);
+        write_open_file_guard(w, ns, '2');
+
+        w.write_depends(w.type_namespace);
+        w.write_depends(w.type_namespace, '1');
+        // Workaround for https://github.com/microsoft/cppwin32/issues/2
+        for (auto&& extern_depends : w.extern_depends)
+        {
+            auto guard = wrap_type_namespace(w, extern_depends.first);
+            w.write_each<write_extern_forward>(extern_depends.second);
+        }
+        w.save_cpp();
+    }
+
     static void write_namespace_h(std::string_view const& ns, cache::namespace_members const& members)
     {
         writer w;
@@ -123,6 +153,35 @@ namespace cppwin32
         write_version_assert(w);
 
         w.write_depends(w.type_namespace, '2');
+        // Workaround for https://github.com/microsoft/cppwin32/issues/2
+        for (auto&& extern_depends : w.extern_depends)
+        {
+            auto guard = wrap_type_namespace(w, extern_depends.first);
+            w.write_each<write_extern_forward>(extern_depends.second);
+        }
+        w.save_header();
+    }
+
+    static void write_namespace_h_no_impl(std::string_view const& ns, cache::namespace_members const& members)
+    {
+        writer w;
+        w.type_namespace = ns;
+        {
+            auto wrap = wrap_type_namespace(w, ns);
+
+            w.write("#pragma region methods\n");
+            w.write_each<write_class_abi>(members.classes);
+            w.write("#pragma endregion methods\n\n");
+        }
+
+        write_close_file_guard(w);
+        w.swap();
+        write_preamble(w);
+        write_open_file_guard(w, ns);
+        write_version_assert(w);
+        w.write_depends(w.type_namespace, '0');
+
+        //w.write_depends(w.type_namespace, '2');
         // Workaround for https://github.com/microsoft/cppwin32/issues/2
         for (auto&& extern_depends : w.extern_depends)
         {

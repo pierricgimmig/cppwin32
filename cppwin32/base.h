@@ -11,6 +11,11 @@
 #include <string_view>
 #include <type_traits>
 
+// Orbit
+#define ORBIT_SCOPE_FUNCTION()
+#define ORBIT_TRACK_PARAM(x)
+#define ORBIT_TRACK_RET(x)
+
 #ifdef _DEBUG
 
 #define WIN32_ASSERT _ASSERTE

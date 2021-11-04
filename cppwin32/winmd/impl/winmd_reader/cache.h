@@ -21,6 +21,8 @@ namespace winmd::reader
                         continue;
                     }
 
+                    //if (type.TypeNamespace() != "Windows.Win32.Storage.FileSystem") continue;
+
                     auto& ns = m_namespaces[type.TypeNamespace()];
                     ns.types.try_emplace(type.TypeName(), type);
                 }

@@ -335,6 +335,9 @@ namespace cppwin32
                     case ElementType::Boolean:
                         write("bool");
                         break;
+                    case ElementType::Char:
+                        write("char");
+                        break;
                     case ElementType::I1:
                         write("int8_t");
                         break;
@@ -429,6 +432,14 @@ namespace cppwin32
             }
 
             filename += ".h";
+            flush_to_file(filename);
+        }
+
+        void save_cpp()
+        {
+            auto filename{ settings.output_folder + "win32/impl/" };
+            filename += type_namespace;
+            filename += ".cpp";
             flush_to_file(filename);
         }
     };

@@ -179,8 +179,9 @@ Where <spec> is one or more of:
                     {
                         write_namespace_0_h(ns, members);
                         write_namespace_1_h(ns, members);
-                        write_namespace_2_h(ns, members);
-                        write_namespace_h(ns, members);
+                        //write_namespace_2_h(ns, members);
+                        write_namespace_h_no_impl(ns, members);
+                        write_namespace_cpp(ns, members);
                     });
             }
             group.add([&c] { write_complex_structs_h(c); });
