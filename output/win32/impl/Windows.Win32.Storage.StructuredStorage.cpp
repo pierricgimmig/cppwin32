@@ -6,8 +6,6 @@
 #include "win32/impl/Windows.Win32.Storage.StructuredStorage.1.h"
 WIN32_EXPORT namespace win32::Windows::Win32::Storage::StructuredStorage
 {
-ApiTable g_api_table;
-
 #pragma region abi_methods
 #pragma endregion abi_methods
 

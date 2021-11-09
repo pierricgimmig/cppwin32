@@ -1,5 +1,9 @@
 #pragma once
 
+#include <algorithm>
+#include <algorithm>
+#include <filesystem>
+
 namespace cppwin32
 {
     static void write_namespace_0_h(std::string_view const& ns, cache::namespace_members const& members)
@@ -112,7 +116,8 @@ namespace cppwin32
         {
             auto wrap = wrap_type_namespace(w, ns);
 
-            w.write("ApiTable g_api_table;\n\n");
+            if(!members.classes.empty())
+                w.write("ApiTable g_api_table;\n\n");
             w.write("#pragma region abi_methods\n");
             w.write_each<write_class_impl>(members.classes);
             w.write("#pragma endregion abi_methods\n\n");
@@ -191,6 +196,27 @@ namespace cppwin32
         w.save_header();
     }
 
+    inline bool is_x64_struct(const TypeDef& method) {
+        auto const attr = get_attribute(method, "Windows.Win32.Interop", "SupportedArchitectureAttribute");
+        if (attr)
+        {
+            CustomAttributeSig attr_sig = attr.Value();
+            PRINT_VAR(attr_sig.FixedArgs().size());
+            PRINT_VAR(attr_sig.NamedArgs().size());
+            FixedArgSig fixed_arg = attr_sig.FixedArgs()[0];
+            ElemSig elem_sig = std::get<ElemSig>(fixed_arg.value);
+            ElemSig::EnumValue enum_value = std::get<ElemSig::EnumValue>(elem_sig.value);
+            auto const arch_flags = std::get<int32_t>(enum_value.value);
+            PRINT_VAR(arch_flags);
+            PRINT_VAR("Found Supported Arch Attr");
+            //method_signature signature{ method };
+            //PRINT_VAR(method.Name());
+            if ((arch_flags & 2) == 0) // x64
+                return false;
+        }
+        return true;
+    }
+
     static void write_complex_structs_h(cache const& c)
     {
         writer w;
@@ -200,7 +226,8 @@ namespace cppwin32
         {
             for (auto&& s : members.structs)
             {
-                graph.add_struct(s);
+                if(is_x64_struct(s))
+                    graph.add_struct(s);
             }
         }
 
@@ -267,5 +294,60 @@ namespace cppwin32
         }
 
         w.flush_to_file(settings.output_folder + "win32/impl/complex_interfaces.h");
+    }
+
+    std::string ToLower(std::string_view str) {
+        std::string s(str);
+        std::transform(s.begin(), s.end(), s.begin(),
+            [](unsigned char c) { return std::tolower(c); });
+        return s;
+    }
+
+    static void write_manifest_h(cache const& c)
+    {
+        writer w;
+        
+        for (const database& db : c.databases())
+        {
+            PRINT_VAR(db.path());
+            std::filesystem::path path(db.path());
+            if (path.filename() != "Windows.Win32.winmd") continue;
+
+            std::map<std::string, uint32_t> module_name_to_index;
+            for (const ModuleRef& module_ref : db.get_table<ModuleRef>()) {
+                std::string module_name = ToLower(module_ref.Name());
+
+                auto [it, inserted] = module_name_to_index.emplace(module_name, 0);
+                // CHECK(inserted);
+            }
+
+            uint32_t count = 0;
+            for (auto& [name, index] : module_name_to_index) {
+                index = count++;
+                PRINT_VAR(name);
+                PRINT_VAR(index);
+            }
+
+            w.write("#pragma once\n\n");
+            w.write("constexpr uint32_t kNumApiModules = %;\n\n", db.get_table<ModuleRef>().size());
+            w.write("constexpr const char* g_api_module_table[kNumApiModules] = {\n");
+            for (const auto& [module_name, index] : module_name_to_index) {
+                w.write("  \"%\", // %\n", module_name, index);
+            }
+            w.write("};\n\n");
+
+            w.write("constexpr uint32_t kNumApiFunctions = %;\n", db.get_table<ImplMap>().size());
+            w.write("constexpr const char* g_api_function_table[kNumApiFunctions] = {\n");
+            for (const ImplMap& impl_map : db.get_table<ImplMap>()) {
+                std::string function_name(impl_map.ImportName());
+                // ImportScope
+                std::string module_name = ToLower(db.get_table<ModuleRef>()[impl_map.ImportScope().index()].Name());
+                uint32_t index = module_name_to_index.at(module_name);
+                w.write("  \"%\", // %\n", function_name, index);
+            }
+            w.write("};\n");
+        }
+
+        w.flush_to_file(settings.output_folder + "win32/manifest.h");
     }
 }

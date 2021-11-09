@@ -15,35 +15,35 @@ namespace cppwin32
 {
     settings_type settings;
 
-    struct usage_exception {};
-
-    static constexpr option options[]
+    struct usage_exception
     {
-        { "input", 0, option::no_max, "<spec>", "Windows metadata to include in projection" },
-        { "reference", 0, option::no_max, "<spec>", "Windows metadata to reference from projection" },
-        { "output", 0, 1, "<path>", "Location of generated projection and component templates" },
-        { "verbose", 0, 0, {}, "Show detailed progress information" },
-        { "pch", 0, 1, "<name>", "Specify name of precompiled header file (defaults to pch.h)" },
-        { "include", 0, option::no_max, "<prefix>", "One or more prefixes to include in input" },
-        { "exclude", 0, option::no_max, "<prefix>", "One or more prefixes to exclude from input" },
-        { "base", 0, 0, {}, "Generate base.h unconditionally" },
-        { "help", 0, option::no_max, {}, "Show detailed help with examples" },
-        { "?", 0, option::no_max, {}, {} },
-        { "library", 0, 1, "<prefix>", "Specify library prefix (defaults to win32)" },
-        { "filter" }, // One or more prefixes to include in input (same as -include)
-        { "license", 0, 0 }, // Generate license comment
-        { "brackets", 0, 0 }, // Use angle brackets for #includes (defaults to quotes)
     };
 
+    static constexpr option options[]{
+        {"input", 0, option::no_max, "<spec>", "Windows metadata to include in projection"},
+        {"reference", 0, option::no_max, "<spec>", "Windows metadata to reference from projection"},
+        {"output", 0, 1, "<path>", "Location of generated projection and component templates"},
+        {"verbose", 0, 0, {}, "Show detailed progress information"},
+        {"pch", 0, 1, "<name>", "Specify name of precompiled header file (defaults to pch.h)"},
+        {"include", 0, option::no_max, "<prefix>", "One or more prefixes to include in input"},
+        {"exclude", 0, option::no_max, "<prefix>", "One or more prefixes to exclude from input"},
+        {"base", 0, 0, {}, "Generate base.h unconditionally"},
+        {"help", 0, option::no_max, {}, "Show detailed help with examples"},
+        {"?", 0, option::no_max, {}, {}},
+        {"library", 0, 1, "<prefix>", "Specify library prefix (defaults to win32)"},
+        {"filter"},         // One or more prefixes to include in input (same as -include)
+        {"license", 0, 0},  // Generate license comment
+        {"brackets", 0, 0}, // Use angle brackets for #includes (defaults to quotes)
+    };
 
-    static void print_usage(writer& w)
+    static void print_usage(writer &w)
     {
-        static auto printColumns = [](writer& w, std::string_view const& col1, std::string_view const& col2)
+        static auto printColumns = [](writer &w, std::string_view const &col1, std::string_view const &col2)
         {
             w.write_printf("  %-20s%s\n", col1.data(), col2.data());
         };
 
-        static auto printOption = [](writer& w, option const& opt)
+        static auto printOption = [](writer &w, option const &opt)
         {
             if (opt.desc.empty())
             {
@@ -69,7 +69,7 @@ Where <spec> is one or more of:
         w.write(format, CPPWIN32_VERSION_STRING, bind_each(printOption, options));
     }
 
-    static void process_args(reader const& args)
+    static void process_args(reader const &args)
     {
         settings.verbose = args.exists("verbose");
         settings.fastabi = args.exists("fastabi");
@@ -88,17 +88,17 @@ Where <spec> is one or more of:
         settings.output_folder = std::filesystem::canonical(output_folder).string();
         settings.output_folder += '\\';
 
-        for (auto&& include : args.values("include"))
+        for (auto &&include : args.values("include"))
         {
             settings.include.insert(include);
         }
 
-        for (auto&& include : args.values("filter"))
+        for (auto &&include : args.values("filter"))
         {
             settings.include.insert(include);
         }
 
-        for (auto&& exclude : args.values("exclude"))
+        for (auto &&exclude : args.values("exclude"))
         {
             settings.exclude.insert(exclude);
         }
@@ -113,7 +113,7 @@ Where <spec> is one or more of:
                 // For compatibility with C++/WinRT 1.0, the component_name defaults to the *first*
                 // input, hence the use of values() here that will return the args in input order.
 
-                auto& values = args.values("input");
+                auto &values = args.values("input");
 
                 if (!values.empty())
                 {
@@ -151,7 +151,32 @@ Where <spec> is one or more of:
         return files;
     }
 
-    static int run(int const argc, char* argv[])
+    void dump_namespace_from_cache(const cache &c)
+    {
+        for (const database &db : c.databases())
+        {
+            PRINT_VAR(db.get_table<Module>().size());
+            PRINT_VAR(db.get_table<Module>()[0].Name());
+            PRINT_VAR(db.get_table<ModuleRef>().size());
+            PRINT_VAR(db.get_table<MethodDef>().size());
+            PRINT_VAR(db.get_table<ImplMap>().size());
+
+            for (const ImplMap &impl_map : db.get_table<ImplMap>())
+            {
+                PRINT_VAR(impl_map.ImportName());
+                PRINT_VAR(impl_map.ImportScope().index());
+                std::string_view module_name = db.get_table<ModuleRef>()[impl_map.ImportScope().index()].Name();
+                PRINT_VAR(module_name);
+            }
+
+            for (const ModuleRef &module_ref : db.get_table<ModuleRef>())
+            {
+                PRINT_VAR(module_ref.Name());
+            }
+        }
+    }
+
+    static int run(int const argc, char *argv[])
     {
         int result{};
         writer w;
@@ -160,7 +185,7 @@ Where <spec> is one or more of:
         {
             auto const start_time = std::chrono::high_resolution_clock::now();
 
-            reader args{ argc, argv, options };
+            reader args{argc, argv, options};
 
             if (!args || args.exists("help") || args.exists("?"))
             {
@@ -168,32 +193,38 @@ Where <spec> is one or more of:
             }
 
             process_args(args);
-            cache c{ get_files_to_cache() };
+            cache c{get_files_to_cache()};
             task_group group;
 
             w.flush_to_console();
 
-            for (auto&& [ns, members] : c.namespaces())
+            //dump_namespace_from_cache(c);
+
+            for (auto &&[ns, members] : c.namespaces())
             {
                 group.add([&, &ns = ns, &members = members]
-                    {
-                        write_namespace_0_h(ns, members);
-                        write_namespace_1_h(ns, members);
-                        //write_namespace_2_h(ns, members);
-                        write_namespace_h_no_impl(ns, members);
-                        write_namespace_cpp(ns, members);
-                    });
+                          {
+                              write_namespace_0_h(ns, members);
+                              write_namespace_1_h(ns, members);
+                              //write_namespace_2_h(ns, members);
+                              write_namespace_h_no_impl(ns, members);
+                              write_namespace_cpp(ns, members);
+                          });
             }
-            group.add([&c] { write_complex_structs_h(c); });
-            group.add([&c] { write_complex_interfaces_h(c); });
+            group.add([&c]
+                      { write_complex_structs_h(c); });
+            group.add([&c]
+                      { write_complex_interfaces_h(c); });
+            group.add([&c]
+                      { write_manifest_h(c); });
 
             std::filesystem::copy_file("base.h", settings.output_folder + "win32/" + "base.h", std::filesystem::copy_options::overwrite_existing);
         }
-        catch (usage_exception const&)
+        catch (usage_exception const &)
         {
             print_usage(w);
         }
-        catch (std::exception const& e)
+        catch (std::exception const &e)
         {
             w.write("cppwin32 : error %\n", e.what());
             result = 1;
@@ -204,7 +235,7 @@ Where <spec> is one or more of:
     }
 }
 
-int main(int const argc, char* argv[])
+int main(int const argc, char *argv[])
 {
     cppwin32::run(argc, argv);
 

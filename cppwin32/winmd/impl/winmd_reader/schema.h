@@ -1,4 +1,17 @@
 
+#include <string>
+#include <sstream>
+
+template <typename T>
+inline std::string ToString(const char *name, const T &value)
+{
+    std::stringstream string_stream;
+    string_stream << name << " = " << value << std::endl;
+    return string_stream.str();
+}
+
+#define PRINT_VAR(x) OutputDebugStringA(ToString(#x, x).c_str())
+
 namespace winmd::reader
 {
     struct TypeRef : row_base<TypeRef>
@@ -48,7 +61,7 @@ namespace winmd::reader
 
         auto Flags() const
         {
-            return TypeAttributes{{ get_value<uint32_t>(0) }};
+            return TypeAttributes{{get_value<uint32_t>(0)}};
         }
 
         auto TypeName() const
@@ -93,12 +106,12 @@ namespace winmd::reader
 
         auto ImplFlags() const
         {
-            return MethodImplAttributes{{ get_value<uint16_t>(1) }};
+            return MethodImplAttributes{{get_value<uint16_t>(1)}};
         }
 
         auto Flags() const
         {
-            return MethodAttributes{{ get_value<uint16_t>(2) }};
+            return MethodAttributes{{get_value<uint16_t>(2)}};
         }
 
         auto Name() const
@@ -109,7 +122,7 @@ namespace winmd::reader
         MethodDefSig Signature() const
         {
             auto cursor = get_blob(4);
-            return{ get_table(), cursor };
+            return {get_table(), cursor};
         }
 
         auto ParamList() const;
@@ -140,7 +153,7 @@ namespace winmd::reader
         MethodDefSig MethodSignature() const
         {
             auto cursor = get_blob(2);
-            return{ get_table(), cursor };
+            return {get_table(), cursor};
         }
 
         auto CustomAttribute() const;
@@ -164,7 +177,7 @@ namespace winmd::reader
 
         auto Flags() const
         {
-            return FieldAttributes{{ get_value<uint16_t>(0) }};
+            return FieldAttributes{{get_value<uint16_t>(0)}};
         }
 
         auto Name() const
@@ -175,7 +188,7 @@ namespace winmd::reader
         auto Signature() const
         {
             auto cursor = get_blob(2);
-            return FieldSig{ get_table(), cursor };
+            return FieldSig{get_table(), cursor};
         }
 
         auto CustomAttribute() const;
@@ -190,7 +203,7 @@ namespace winmd::reader
 
         auto Flags() const
         {
-            return ParamAttributes{{ get_value<uint16_t>(0) }};
+            return ParamAttributes{{get_value<uint16_t>(0)}};
         }
 
         auto Sequence() const
@@ -273,7 +286,7 @@ namespace winmd::reader
         TypeSpecSig Signature() const
         {
             auto cursor = get_blob(0);
-            return{ get_table(), cursor };
+            return {get_table(), cursor};
         }
 
         auto CustomAttribute() const;
@@ -327,7 +340,7 @@ namespace winmd::reader
 
         auto EventFlags() const
         {
-            return EventAttributes{{ get_value<uint16_t>(0) }};
+            return EventAttributes{{get_value<uint16_t>(0)}};
         }
 
         auto Name() const
@@ -359,7 +372,7 @@ namespace winmd::reader
 
         auto Flags() const
         {
-            return PropertyAttributes{{ get_value<uint16_t>(0) }};
+            return PropertyAttributes{{get_value<uint16_t>(0)}};
         }
 
         auto Name() const
@@ -370,7 +383,7 @@ namespace winmd::reader
         PropertySig Type() const
         {
             auto cursor = get_blob(2);
-            return{ get_table(), cursor };
+            return {get_table(), cursor};
         }
 
         auto MethodSemantic() const;
@@ -385,7 +398,7 @@ namespace winmd::reader
 
         auto Semantic() const
         {
-            return MethodSemanticsAttributes{{ get_value<uint16_t>(0) }};
+            return MethodSemanticsAttributes{{get_value<uint16_t>(0)}};
         }
 
         auto Method() const;
@@ -417,11 +430,15 @@ namespace winmd::reader
     {
         using row_base::row_base;
 
+        auto Name() const { return get_string(0); }
+
         auto CustomAttribute() const;
     };
 
     struct ImplMap : row_base<ImplMap>
     {
+        auto ImportName() const { return get_string(2); }
+        auto ImportScope() const { return get_coded_index<ModuleRef>(3); };
         using row_base::row_base;
     };
 
@@ -443,7 +460,7 @@ namespace winmd::reader
 
         auto Flags() const
         {
-            return AssemblyAttributes{{ get_value<uint32_t>(2) }};
+            return AssemblyAttributes{{get_value<uint32_t>(2)}};
         }
 
         auto PublicKey() const
@@ -502,7 +519,7 @@ namespace winmd::reader
 
         auto Flags() const
         {
-            return AssemblyAttributes{{ get_value<uint32_t>(1) }};
+            return AssemblyAttributes{{get_value<uint32_t>(1)}};
         }
 
         auto PublicKeyOrToken() const
@@ -602,7 +619,7 @@ namespace winmd::reader
 
         auto Flags() const
         {
-            return GenericParamAttributes{{ get_value<uint16_t>(1) }};
+            return GenericParamAttributes{{get_value<uint16_t>(1)}};
         }
 
         auto Owner() const
@@ -632,62 +649,62 @@ namespace winmd::reader
         auto CustomAttribute() const;
     };
 
-    inline bool operator<(coded_index<HasCustomAttribute> const& left, CustomAttribute const& right) noexcept
+    inline bool operator<(coded_index<HasCustomAttribute> const &left, CustomAttribute const &right) noexcept
     {
         return left < right.Parent();
     }
 
-    inline bool operator<(CustomAttribute const& left, coded_index<HasCustomAttribute> const& right) noexcept
+    inline bool operator<(CustomAttribute const &left, coded_index<HasCustomAttribute> const &right) noexcept
     {
         return left.Parent() < right;
     }
 
-    inline bool operator<(coded_index<TypeOrMethodDef> const& left, GenericParam const& right) noexcept
+    inline bool operator<(coded_index<TypeOrMethodDef> const &left, GenericParam const &right) noexcept
     {
         return left < right.Owner();
     }
 
-    inline bool operator<(GenericParam const& left, coded_index<TypeOrMethodDef> const& right) noexcept
+    inline bool operator<(GenericParam const &left, coded_index<TypeOrMethodDef> const &right) noexcept
     {
         return left.Owner() < right;
     }
 
-    inline bool operator<(coded_index<HasConstant> const& left, Constant const& right) noexcept
+    inline bool operator<(coded_index<HasConstant> const &left, Constant const &right) noexcept
     {
         return left < right.Parent();
     }
 
-    inline bool operator<(Constant const& left, coded_index<HasConstant> const& right) noexcept
+    inline bool operator<(Constant const &left, coded_index<HasConstant> const &right) noexcept
     {
         return left.Parent() < right;
     }
 
-    inline bool operator<(coded_index<HasSemantics> const& left, MethodSemantics const& right) noexcept
+    inline bool operator<(coded_index<HasSemantics> const &left, MethodSemantics const &right) noexcept
     {
         return left < right.Association();
     }
 
-    inline bool operator<(MethodSemantics const& left, coded_index<HasSemantics> const& right) noexcept
+    inline bool operator<(MethodSemantics const &left, coded_index<HasSemantics> const &right) noexcept
     {
         return left.Association() < right;
     }
 
-    inline bool operator<(NestedClass const& left, TypeDef const& right) noexcept
+    inline bool operator<(NestedClass const &left, TypeDef const &right) noexcept
     {
         return left.NestedType() < right;
     }
 
-    inline bool operator<(TypeDef const& left, NestedClass const& right) noexcept
+    inline bool operator<(TypeDef const &left, NestedClass const &right) noexcept
     {
         return left < right.NestedType();
     }
 
-    inline bool operator<(coded_index<HasFieldMarshal> const& left, FieldMarshal const& right) noexcept
+    inline bool operator<(coded_index<HasFieldMarshal> const &left, FieldMarshal const &right) noexcept
     {
         return left < right.Parent();
     }
 
-    inline bool operator<(FieldMarshal const& left, coded_index<HasFieldMarshal> const& right) noexcept
+    inline bool operator<(FieldMarshal const &left, coded_index<HasFieldMarshal> const &right) noexcept
     {
         return left.Parent() < right;
     }

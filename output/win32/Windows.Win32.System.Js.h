@@ -98,8 +98,6 @@ extern "C"
     win32::Windows::Win32::System::Js::JsErrorCode __stdcall ORBIT_IMPL_JsStopProfiling(win32::Windows::Win32::Foundation::HRESULT reason) noexcept;
     win32::Windows::Win32::System::Js::JsErrorCode __stdcall ORBIT_IMPL_JsEnumerateHeap(win32::Windows::Win32::System::Diagnostics::Debug::IActiveScriptProfilerHeapEnum** enumerator) noexcept;
     win32::Windows::Win32::System::Js::JsErrorCode __stdcall ORBIT_IMPL_JsIsEnumeratingHeap(bool* isEnumeratingHeap) noexcept;
-    win32::Windows::Win32::System::Js::JsErrorCode __stdcall ORBIT_IMPL_JsCreateContext(void* runtime, win32::Windows::Win32::System::Diagnostics::Debug::IDebugApplication32* debugApplication, void** newContext) noexcept;
-    win32::Windows::Win32::System::Js::JsErrorCode __stdcall ORBIT_IMPL_JsStartDebugging(win32::Windows::Win32::System::Diagnostics::Debug::IDebugApplication32* debugApplication) noexcept;
 }
 
 struct ApiTable {
@@ -188,8 +186,6 @@ struct ApiTable {
     win32::Windows::Win32::System::Js::JsErrorCode (__stdcall *JsStopProfiling)(win32::Windows::Win32::Foundation::HRESULT reason) noexcept;
     win32::Windows::Win32::System::Js::JsErrorCode (__stdcall *JsEnumerateHeap)(win32::Windows::Win32::System::Diagnostics::Debug::IActiveScriptProfilerHeapEnum** enumerator) noexcept;
     win32::Windows::Win32::System::Js::JsErrorCode (__stdcall *JsIsEnumeratingHeap)(bool* isEnumeratingHeap) noexcept;
-    win32::Windows::Win32::System::Js::JsErrorCode (__stdcall *JsCreateContext)(void* runtime, win32::Windows::Win32::System::Diagnostics::Debug::IDebugApplication32* debugApplication, void** newContext) noexcept;
-    win32::Windows::Win32::System::Js::JsErrorCode (__stdcall *JsStartDebugging)(win32::Windows::Win32::System::Diagnostics::Debug::IDebugApplication32* debugApplication) noexcept;
 };
 extern ApiTable g_api_table;
 

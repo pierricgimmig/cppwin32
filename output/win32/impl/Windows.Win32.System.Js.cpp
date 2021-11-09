@@ -964,28 +964,6 @@ extern "C"
         return win32_impl_result;
     }
 
-    win32::Windows::Win32::System::Js::JsErrorCode __stdcall ORBIT_IMPL_JsCreateContext(void* runtime, win32::Windows::Win32::System::Diagnostics::Debug::IDebugApplication32* debugApplication, void** newContext) noexcept
-    {
-        ORBIT_SCOPE_FUNCTION();
-        ORBIT_TRACK_PARAM(runtime);
-        ORBIT_TRACK_PARAM(debugApplication);
-        ORBIT_TRACK_PARAM(newContext);
-
-        auto win32_impl_result = g_api_table.JsCreateContext(runtime, debugApplication, newContext);
-        ORBIT_TRACK_RET(win32_impl_result);
-        return win32_impl_result;
-    }
-
-    win32::Windows::Win32::System::Js::JsErrorCode __stdcall ORBIT_IMPL_JsStartDebugging(win32::Windows::Win32::System::Diagnostics::Debug::IDebugApplication32* debugApplication) noexcept
-    {
-        ORBIT_SCOPE_FUNCTION();
-        ORBIT_TRACK_PARAM(debugApplication);
-
-        auto win32_impl_result = g_api_table.JsStartDebugging(debugApplication);
-        ORBIT_TRACK_RET(win32_impl_result);
-        return win32_impl_result;
-    }
-
 }
 
 #pragma endregion abi_methods
